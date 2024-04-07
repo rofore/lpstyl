@@ -69,7 +69,7 @@ int adsp_setup_endp(struct adsp_socket *s,
 /* This is in libatalk (in nbp_util.c), but it doesn't look like the
 	prototype is in any header files.
 */
-int nbp_name(char *name, char **objp, char **typep, char **zonep);
+int nbp_name(const char *name, char **objp, char **typep, char **zonep);
 
 int adsp_open_socket(struct adsp_socket *s)
 {
@@ -82,20 +82,22 @@ int adsp_open_socket(struct adsp_socket *s)
 	}
 
 	bzero(&addr, sizeof(struct sockaddr_at));
+#ifdef BSD4_4
 	addr.sat_len = sizeof(struct sockaddr_at);
+#endif
 	addr.sat_family = AF_APPLETALK;
 	addr.sat_addr.s_net = ATADDR_ANYNET;
 	addr.sat_addr.s_node = ATADDR_ANYNODE;
 	addr.sat_port = ATADDR_ANYPORT;
 
-	if(bind(s->socket, (struct sockaddr*)&addr, addr.sat_len) < 0)
+	if(bind(s->socket, (struct sockaddr*)&addr, sizeof(struct sockaddr_at)) < 0)
 	{
 		s->socket = -1;
 		return(-1);
 	}
 
 	{
-		int len = sizeof(struct sockaddr_at);
+		socklen_t len = sizeof(struct sockaddr_at);
 		if(getsockname(s->socket, (struct sockaddr*)&addr, &len) < 0)
 		{
 			s->socket = -1;
@@ -121,7 +123,7 @@ int adsp_recv_packet(struct adsp_endp *endp, int block)
 	char pkt[1024];
 	size_t len;
 	struct sockaddr_at from;
-	int fromlen;
+	socklen_t fromlen;
 	int result = 0;
 	int retries = 0;
 	int rcv_result;
@@ -613,7 +615,7 @@ int adsp_connect(	struct adsp_socket *s,
 	char *Zone = "*";
 
 	nbp_name(name, &Obj, &Type, &Zone);
-	count = nbp_lookup(Obj, Type, Zone, &nn, 1);
+	count = nbp_lookup(Obj, Type, Zone, &nn, 1, NULL);
 	if(count < 1)
 		return(-1);
 	
@@ -658,7 +660,9 @@ int adsp_listen(struct adsp_socket *s,
 		be able to receive packets.
 	*/
 	bzero(&(endp->remote_addr), sizeof(struct sockaddr_at));
+#ifdef BSD4_4
 	endp->remote_addr.sat_len = sizeof(struct sockaddr_at);
+#endif
 	endp->remote_addr.sat_family = AF_APPLETALK;
 	endp->remote_addr.sat_addr.s_net = ATADDR_ANYNET;
 	endp->remote_addr.sat_addr.s_node = ATADDR_ANYNODE;

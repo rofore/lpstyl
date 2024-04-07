@@ -170,19 +170,12 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifdef unix
-	#include <sys/types.h>
-	#include <termios.h>
-	#include <unistd.h>
-	#include <errno.h>
-	#include <signal.h>
-	#include <fcntl.h>
-#else
-	/* I sometimes compile this under MacOS for various reasons.  This
-		source file gets #included in another one which includes the right
-		header files and defines dummy versions of various unix-specific functions.  
-	*/
-#endif
+#include <sys/types.h>
+#include <termios.h>
+#include <unistd.h>
+#include <errno.h>
+#include <signal.h>
+#include <fcntl.h>
 
 #ifdef ATALK
 	#include <netatalk/at.h> 
