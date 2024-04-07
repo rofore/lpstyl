@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netatalk/at.h>
+#include <atalk/netddp.h>
 #include <atalk/nbp.h>
 #include <string.h>
 #include <termios.h>
@@ -73,43 +74,13 @@ int nbp_name(const char *name, char **objp, char **typep, char **zonep);
 
 int adsp_open_socket(struct adsp_socket *s)
 {
-	struct sockaddr_at addr;
-
-	/* In case we fail */
-	if((s->socket = socket(AF_APPLETALK, SOCK_DGRAM, 0)) < 0)
+	if ((s->socket = netddp_open(&s->local_addr, NULL)) < 0)
 	{
-		return(s->socket);
+		return -1;
 	}
 
-	bzero(&addr, sizeof(struct sockaddr_at));
-#ifdef BSD4_4
-	addr.sat_len = sizeof(struct sockaddr_at);
-#endif
-	addr.sat_family = AF_APPLETALK;
-	addr.sat_addr.s_net = ATADDR_ANYNET;
-	addr.sat_addr.s_node = ATADDR_ANYNODE;
-	addr.sat_port = ATADDR_ANYPORT;
-
-	if(bind(s->socket, (struct sockaddr*)&addr, sizeof(struct sockaddr_at)) < 0)
-	{
-		s->socket = -1;
-		return(-1);
-	}
-
-	{
-		socklen_t len = sizeof(struct sockaddr_at);
-		if(getsockname(s->socket, (struct sockaddr*)&addr, &len) < 0)
-		{
-			s->socket = -1;
-			return(-1);
-		}
-	}
-
-	bcopy(&addr, &(s->local_addr), sizeof(struct sockaddr_at));
-
-	/* XXX -- This could be done a lot better. */
 	s->lastConnID = getpid();
-	return(0);
+	return (0);
 }
 
 int adsp_close_socket(struct adsp_socket *s)
@@ -170,7 +141,7 @@ int adsp_recv_packet(struct adsp_endp *endp, int block)
 		fromlen = sizeof(struct sockaddr_at);
 		len = 1024;
 		bcopy(&(endp->remote_addr), &from, fromlen);
-		rcv_result = recvfrom(endp->local_socket->socket,
+		rcv_result = netddp_recvfrom(endp->local_socket->socket,
 				pkt,
 				len,
 				0,
@@ -477,7 +448,7 @@ int adsp_send_data(struct adsp_endp *endp,
 	if(data != NULL && len != 0)
 		bcopy(data, &(p.pkt.data), len);
 
-	if(sendto(endp->local_socket->socket, 
+	if(netddp_sendto(endp->local_socket->socket, 
 			  &p, 
 			  1 + sizeof(struct adsphdr) + len,
 			  0,
@@ -517,7 +488,7 @@ int adsp_send_attn(struct adsp_endp *endp,
 	if(data != NULL && len > 0)
 		bcopy(data, &(p.pkt.data.data), len);
 
-	if(sendto(endp->local_socket->socket, 
+	if(netddp_sendto(endp->local_socket->socket, 
 			  &p, 
 			  1 + sizeof(struct adsphdr) + 2 + len,
 			  0,
@@ -564,7 +535,7 @@ int adsp_send_control(struct adsp_endp *endp,
 		break;
 	}
  
-	if(sendto(endp->local_socket->socket, 
+	if(netddp_sendto(endp->local_socket->socket, 
 			  &p, 
 			  sendSize,
 			  0,
